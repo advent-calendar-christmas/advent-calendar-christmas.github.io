@@ -793,6 +793,32 @@ const CATALOG = [
     "overview": "When workaholic bachelor Sam reluctantly agrees to babysit his niece and nephew before Christmas, he quickly realizes he is completely out of his element. Desperate for help, he enlists their handsome neighbor, Jason, sparking an unexpected holiday romance that makes Sam rethink what he truly wants out of life."
   },
   {
+    "id": "xmas638",
+    "title": "★The Holiday Dating Guide",
+    "type": "Movie",
+    "vibe": "romance",
+    "duration": "1h 23min",
+    "mins": 83,
+    "audio": "vo",
+    "platform": "TF1+",
+    "poster": "https://image.tmdb.org/t/p/original/yakQX8MkLeEwTc0qDcCm3XrUoUO.jpg",
+    "url": "https://www.tf1.fr/tf1/un-noel-pour-trouver-lame-soeur/videos/un-noel-pour-trouver-lame-soeur-04006187.html",
+    "overview": "To get her first dating advice book published, dating coach Abigale Slater agrees to prove her rules actually work by making a man fall for her in 12 days—just in time for Christmas Eve. When she meets the charming Michael Ryan, however, her single-minded mission takes an unexpected turn as genuine sparks force her to break her own rules."
+  },
+  {
+    "id": "xmas639",
+    "title": "★Holiday Mismatch",
+    "type": "Movie",
+    "vibe": "romance",
+    "duration": "1h 20min",
+    "mins": 80,
+    "audio": "vo",
+    "platform": "TF1+",
+    "poster": "https://image.tmdb.org/t/p/original/jqFTEKY3Ry5Y9L4Pg5LGpVdNij5.jpg",
+    "url": "https://www.tf1.fr/tf1/belles-meres-noel/videos/belles-meres-noel-77198419.html",
+    "overview": "When recently retired accountant Barbara joins the local Christmas committee, she immediately clashes with free-spirited head Kath—only for the two women to discover they have accidentally matched their adult children, Shane and Lauren, on a dating app. Horrified, the feuding mothers team up to sabotage the budding relationship, but their meddling only brings the couple closer while sparking an unexpected friendship between the moms themselves."
+  },
+  {
     "id": "xmas539",
     "title": "★Alien Xmas",
     "type": "Movie",
