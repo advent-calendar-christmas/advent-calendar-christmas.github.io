@@ -2771,28 +2771,72 @@
       return prev[b.length];
     }
 
-    function fuzzyMatch(text, query) {
-      const normText = normalizeForSearch(text);
-      const normQuery = normalizeForSearch(query);
-      if (!normQuery) return true;
-      if (normText.includes(normQuery)) return true;
+    // Shorthand & slang that aren't straight first-letter initials (add any extras you like here)
+    const SEARCH_ALIASES = {
+      b99: "brooklyn nine nine",
+      spn: "supernatural",
+      kcu: "kc undercover",
+      pnf: "phineas and ferb",
+      slzc: "suite life of zack cody",
+      xmas: "christmas",
+      ur: "your"
+    };
 
-      const queryWords = normQuery.split(" ");
+    // Automatically turns any show/movie title into its initials (e.g., "The Vampire Diaries" -> "tvd")
+    function getTitleAcronyms(title) {
+      const withoutSeason = String(title).replace(/\([^)]*\)/g, "").trim();
+      const mainName = withoutSeason.split(/[—:]/)[0].trim();
+
+      const acronyms = new Set();
+      [mainName, withoutSeason].forEach(part => {
+        const words = normalizeForSearch(part).split(" ").filter(Boolean);
+        if (words.length >= 2) {
+          acronyms.add(words.map(w => w[0]).join(""));
+          // Also match without leading "the", "a", or "an" (e.g., "nbc" for "The Nightmare Before Christmas")
+          if (["the", "a", "an"].includes(words[0]) && words.length >= 3) {
+            acronyms.add(words.slice(1).map(w => w[0]).join(""));
+          }
+        }
+      });
+      return [...acronyms];
+    }
+
+    function fuzzyMatch(text, query, acronyms = []) {
+      const normText = normalizeForSearch(text);
+      const rawQuery = normalizeForSearch(query);
+      if (!rawQuery) return true;
+
+      // Expand shorthand aliases (e.g., "b99" -> "brooklyn nine nine", "ur" -> "your")
+      const expandedQuery = rawQuery
+        .split(" ")
+        .map(w => SEARCH_ALIASES[w] || w)
+        .join(" ");
+
+      if (normText.includes(expandedQuery)) return true;
+
+      const queryWords = expandedQuery.split(" ");
       const targetWords = normText.split(" ");
 
       return queryWords.every(qWord => {
         if (normText.includes(qWord)) return true;
-        if (qWord.length < 3) return false;
 
-        // Allow 1 typo on short words (3–5 letters) and 2 typos on longer words (6+)
+        // Match auto-generated acronyms (exact match for 2+ letters, or prefix while typing 3+ letters)
+        if (acronyms.some(a => a === qWord || (qWord.length >= 3 && a.startsWith(qWord)))) {
+          return true;
+        }
+
+        // Prevent 3-letter acronyms like "tvd" from accidentally fuzzy-matching unrelated words like "ted"
+        if (qWord.length < 4) return false;
+
+        // Allow 1 typo on 4–5 letter words and 2 typos on 6+ letter words
         const maxDist = qWord.length <= 5 ? 1 : 2;
 
         return targetWords.some(tWord => {
           if (Math.abs(tWord.length - qWord.length) <= maxDist && editDistance(qWord, tWord) <= maxDist) {
             return true;
           }
-          // Also forgive typos while still mid-word (e.g., "chist" -> "christmas")
-          if (qWord.length >= 4 && tWord.length > qWord.length) {
+          // Forgive typos while still mid-word (e.g., "chist" -> "christmas")
+          if (tWord.length > qWord.length) {
             return (
               editDistance(qWord, tWord.slice(0, qWord.length)) <= maxDist ||
               editDistance(qWord, tWord.slice(0, qWord.length + 1)) <= maxDist
@@ -2820,7 +2864,8 @@
       const entries = query
         ? allEntries.filter(({ item, status }) => {
             const statusText = status === "seen" ? "seen before" : "watched";
-            return fuzzyMatch(`${item.title} ${item.platform} ${statusText}`, query);
+            const acronyms = getTitleAcronyms(item.title);
+            return fuzzyMatch(`${item.title} ${item.platform} ${statusText}`, query, acronyms);
           })
         : allEntries;
 
