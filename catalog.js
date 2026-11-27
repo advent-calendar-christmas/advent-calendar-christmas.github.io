@@ -819,6 +819,32 @@ const CATALOG = [
     "overview": "When recently retired accountant Barbara joins the local Christmas committee, she immediately clashes with free-spirited head Kath—only for the two women to discover they have accidentally matched their adult children, Shane and Lauren, on a dating app. Horrified, the feuding mothers team up to sabotage the budding relationship, but their meddling only brings the couple closer while sparking an unexpected friendship between the moms themselves."
   },
   {
+    "id": "xmas640",
+    "title": "★The Finnish Line",
+    "type": "Movie",
+    "vibe": "romance",
+    "duration": "1h 19min",
+    "mins": 79,
+    "audio": "vo",
+    "platform": "TF1+",
+    "poster": "https://image.tmdb.org/t/p/original/3lerMQaQX5nnotesTyNggH53ATU.jpg",
+    "url": "https://www.tf1.fr/tf1/noel-dans-le-grand-nord/videos/noel-dans-le-grand-nord-43901827.html",
+    "overview": "Inspired by her late father's acclaimed legacy in dog sled racing, Anya travels to Finland to compete in the 40th annual Joulurauha race. As she struggles to bond with a new sled dog and faces off against her father's old rival, she reluctantly turns to Cole—a charming journalist—who helps her overcome her anxieties and sparks an unexpected holiday romance."
+  },
+  {
+    "id": "xmas641",
+    "title": "★Toying With the Holidays",
+    "type": "Movie",
+    "vibe": "romance",
+    "duration": "1h 23min",
+    "mins": 83,
+    "audio": "vo",
+    "platform": "TF1+",
+    "poster": "https://image.tmdb.org/t/p/original/yDnjNPuhsBRffFw1KpR1UGkilqc.jpg",
+    "url": "https://www.tf1.fr/tf1/le-pole-nord-express/videos/le-pole-nord-express-86005033.html",
+    "overview": "Workaholic single mom Danielle returns to her hometown for Christmas hoping to share her favorite childhood traditions with her young son, only to learn the town's beloved North Pole Express train is no longer running. Determined to revive it, she reconnects with her former classmate Kevin—now a model train hobbyist—and sparks fly as they team up to bring the holiday train back to life."
+  },
+  {
     "id": "xmas539",
     "title": "★Alien Xmas",
     "type": "Movie",
