@@ -966,6 +966,24 @@
       transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
+    .watched-modal {
+      background-color: var(--bg-surface);
+      border: 2px solid var(--door-border);
+      border-radius: 24px;
+      max-width: 560px;
+      width: 100%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+      animation: fadeSlideUp 0.28s ease;
+    }
+    .watched-list {
+      overflow-y: auto;
+      max-height: 62vh;
+    }
+
     /* Date input theme compatibility */
     input[type="date"] {
       color-scheme: light;
@@ -1402,6 +1420,14 @@
         <div class="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
           <button
             type="button"
+            onclick="openWatchedModal()"
+            class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold shadow transition cursor-pointer inline-flex items-center justify-center gap-1.5"
+          >
+            <span>✅ Already Watched</span>
+            <span id="already-watched-count" class="px-1.5 py-0.5 rounded-full bg-black/20 text-xs leading-none">0</span>
+          </button>
+          <button
+            type="button"
             onclick="reshuffleCalendar()"
             class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-red-800 hover:bg-red-700 text-white text-sm font-bold shadow transition cursor-pointer"
           >
@@ -1550,6 +1576,44 @@
   </div>
 
   <!-- ========================================================================
+    ALREADY WATCHED & SEEN-IT HISTORY MODAL
+   ======================================================================== -->
+  <div id="watched-overlay" class="music-modal-overlay" onclick="closeWatchedModal(event)" role="dialog" aria-modal="true" aria-labelledby="watched-modal-title">
+    <div class="watched-modal">
+      <div class="flex items-center justify-between mb-3 pb-3 border-b border-[var(--border-soft)]">
+        <div>
+          <h3 id="watched-modal-title" class="font-festive text-2xl font-extrabold">
+            ✅ Already Watched
+          </h3>
+          <p id="watched-modal-subtitle" class="text-xs text-[var(--text-secondary)] mt-0.5">
+            Shows you've checked off or skipped with "Seen it"
+          </p>
+        </div>
+        <button
+          type="button"
+          onclick="closeWatchedModal()"
+          aria-label="Close already watched modal"
+          class="w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold text-[var(--text-secondary)] hover:bg-red-800/10 hover:text-red-700 dark:hover:text-amber-400 transition cursor-pointer"
+        >
+          &times;
+        </button>
+      </div>
+
+      <div class="mb-3">
+        <input
+          type="search"
+          id="watched-search-input"
+          oninput="renderWatchedModalList()"
+          placeholder="🔍 Search by title, platform, or status..."
+          class="w-full px-3.5 py-2 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-subtle)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+        />
+      </div>
+
+      <div id="watched-modal-list" class="watched-list flex flex-col gap-2.5 pr-1"></div>
+      </div>
+    </div> 
+
+  <!-- ========================================================================
        APPLICATION SCRIPT
        ======================================================================== -->
   <script src="catalog.js"></script>
@@ -1566,7 +1630,8 @@
       COUNTDOWN_MODE: "xmas_advent_countdown_mode_v2",
       KNOWN_CATALOG: "xmas_advent_known_catalog_v1",
       DISMISSED: "xmas_advent_dismissed_v1",
-      PAST_SEASONS: "xmas_advent_past_seasons_v1"
+      PAST_SEASONS: "xmas_advent_past_seasons_v1",
+      SEASON_SEEN: "xmas_advent_season_seen_v1"
     };
 
     const defaultPrefs = {
@@ -1594,6 +1659,7 @@
     let knownCatalogSet = new Set(loadJSON(STORAGE_KEYS.KNOWN_CATALOG, []));
     let dismissedSet = new Set(loadJSON(STORAGE_KEYS.DISMISSED, []));
     let pastSeasonsSet = new Set(loadJSON(STORAGE_KEYS.PAST_SEASONS, []));
+    let seasonSeenSet = new Set(loadJSON(STORAGE_KEYS.SEASON_SEEN, [...dismissedSet]));
 
     function isAlreadyHadOrSkipped(id) {
       return (
@@ -2394,7 +2460,7 @@
                 <span>${item.type} • ⏱ ${item.duration}</span>
               </div>
 
-              <div class="mt-2.5 flex items-center justify-between gap-2">
+              <div class="mt-2.5 flex items-center justify-between gap-1.5">
                 <label class="inline-flex items-center gap-1.5 text-xs font-semibold cursor-pointer select-none">
                   <input
                     type="checkbox"
@@ -2487,6 +2553,8 @@
     function swapMovie(iso, oldId, btnEl) {
       dismissedSet.add(oldId);
       saveJSON(STORAGE_KEYS.DISMISSED, [...dismissedSet]);
+      seasonSeenSet.add(oldId);
+      saveJSON(STORAGE_KEYS.SEASON_SEEN, [...seasonSeenSet]);
 
       if (watchedMap[oldId]) {
         delete watchedMap[oldId];
@@ -2608,6 +2676,9 @@
         localStorage.removeItem(STORAGE_KEYS.SCHEDULE);
         localStorage.removeItem(STORAGE_KEYS.OPEN_DOORS);
         localStorage.removeItem(STORAGE_KEYS.WATCHED);
+
+        seasonSeenSet = new Set();
+        localStorage.removeItem(STORAGE_KEYS.SEASON_SEEN);
       }
     }
 
@@ -2640,9 +2711,207 @@
       }
     }
 
+    function getAlreadyWatchedEntries() {
+      const combined = new Map();
+
+      [...watchedHistorySet, ...Object.keys(watchedMap).filter(id => watchedMap[id])].forEach(id => {
+        if (CATALOG_BY_ID[id]) {
+          combined.set(id, { item: CATALOG_BY_ID[id], status: "watched" });
+        }
+      });
+
+      [...dismissedSet].forEach(id => {
+        if (CATALOG_BY_ID[id]) {
+          combined.set(id, { item: CATALOG_BY_ID[id], status: "seen" });
+        }
+      });
+
+      // Most recently watched / skipped first
+      return [...combined.values()].reverse();
+    }
+
+    function updateAlreadyWatchedCount() {
+      const badge = document.getElementById("already-watched-count");
+      if (badge) badge.textContent = getAlreadyWatchedEntries().length;
+    }
+
+    function openWatchedModal() {
+      const searchEl = document.getElementById("watched-search-input");
+      if (searchEl) searchEl.value = "";
+      renderWatchedModalList();
+      document.getElementById("watched-overlay").classList.add("active");
+    }
+
+    function closeWatchedModal(evt) {
+      if (!evt || evt.target.id === "watched-overlay") {
+        document.getElementById("watched-overlay").classList.remove("active");
+      }
+    }
+
+    function normalizeForSearch(str) {
+      return String(str)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Noël -> noel, Ça -> ca
+        .toLowerCase()
+        .replace(/['’.★]/g, "")          // ★F.R.I.E.N.D.S -> friends, 'Twas -> twas
+        .replace(/[^a-z0-9]+/g, " ")     // Disney+ -> disney, punctuation -> spaces
+        .trim();
+    }
+
+    function editDistance(a, b) {
+      let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+      for (let i = 1; i <= a.length; i++) {
+        const curr = [i];
+        for (let j = 1; j <= b.length; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+        }
+        prev = curr;
+      }
+      return prev[b.length];
+    }
+
+    function fuzzyMatch(text, query) {
+      const normText = normalizeForSearch(text);
+      const normQuery = normalizeForSearch(query);
+      if (!normQuery) return true;
+      if (normText.includes(normQuery)) return true;
+
+      const queryWords = normQuery.split(" ");
+      const targetWords = normText.split(" ");
+
+      return queryWords.every(qWord => {
+        if (normText.includes(qWord)) return true;
+        if (qWord.length < 3) return false;
+
+        // Allow 1 typo on short words (3–5 letters) and 2 typos on longer words (6+)
+        const maxDist = qWord.length <= 5 ? 1 : 2;
+
+        return targetWords.some(tWord => {
+          if (Math.abs(tWord.length - qWord.length) <= maxDist && editDistance(qWord, tWord) <= maxDist) {
+            return true;
+          }
+          // Also forgive typos while still mid-word (e.g., "chist" -> "christmas")
+          if (qWord.length >= 4 && tWord.length > qWord.length) {
+            return (
+              editDistance(qWord, tWord.slice(0, qWord.length)) <= maxDist ||
+              editDistance(qWord, tWord.slice(0, qWord.length + 1)) <= maxDist
+            );
+          }
+          return false;
+        });
+      });
+    }
+
+    function renderWatchedModalList() {
+      const listEl = document.getElementById("watched-modal-list");
+      const query = (document.getElementById("watched-search-input")?.value || "").trim().toLowerCase();
+      const allEntries = getAlreadyWatchedEntries();
+
+      if (allEntries.length === 0) {
+        listEl.innerHTML = `
+          <div class="text-center py-10 text-sm text-[var(--text-secondary)]">
+            🍿 Nothing here yet! Check off shows as you watch them or tap <strong>Seen it</strong> to swap ones you've already watched.
+          </div>
+        `;
+        return;
+      }
+
+      const entries = query
+        ? allEntries.filter(({ item, status }) => {
+            const statusText = status === "seen" ? "seen before" : "watched";
+            return fuzzyMatch(`${item.title} ${item.platform} ${statusText}`, query);
+          })
+        : allEntries;
+
+      if (entries.length === 0) {
+        listEl.innerHTML = `
+          <div class="text-center py-10 text-sm text-[var(--text-secondary)]">
+            🔍 No shows match "<strong>${escapeHtml(query)}</strong>".
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = entries.map(({ item, status }) => {
+        const platClass = getPlatformBadgeClass(item.platform);
+        const fb = getFallbackStyle(item.vibe);
+        const initials = item.title.replace(/[^A-Za-z0-9 ]/g, "").split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+        const statusPill = status === "seen"
+          ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300">👀 Seen Before</span>`
+          : `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-green-600/20 text-green-700 dark:text-green-400">✅ Watched</span>`;
+
+        return `
+          <div class="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-soft)]">
+            <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="poster-box block" style="width:44px; height:64px;">
+              <img
+                src="${item.poster}"
+                alt="${escapeHtml(item.title)}"
+                class="poster-img"
+                loading="lazy"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+              />
+              <div class="poster-fallback" style="display:none; background:${fb.bg};">
+                <span>${fb.icon}</span>
+                <span>${initials || "🎄"}</span>
+              </div>
+            </a>
+
+            <div class="flex-1 min-w-0">
+              <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="block font-bold text-sm leading-snug hover:text-red-700 dark:hover:text-amber-400 transition truncate" title="${escapeHtml(item.title)}">
+                ${escapeHtml(item.title)}
+              </a>
+              <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-secondary)]">
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${platClass}">${item.platform}</span>
+                ${statusPill}
+                <span>⏱ ${item.duration}</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onclick="removeFromAlreadyWatched('${item.id}')"
+              title="Remove from Already Watched so it can appear again"
+              class="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[var(--text-secondary)] hover:bg-red-500/15 hover:text-red-700 dark:hover:text-amber-300 border border-slate-400/25 transition cursor-pointer"
+            >
+              ✖ Undo
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function removeFromAlreadyWatched(id) {
+      dismissedSet.delete(id);
+      saveJSON(STORAGE_KEYS.DISMISSED, [...dismissedSet]);
+
+      seasonSeenSet.delete(id);
+      saveJSON(STORAGE_KEYS.SEASON_SEEN, [...seasonSeenSet]);
+
+      watchedHistorySet.delete(id);
+      saveJSON(WATCHED_HISTORY_KEY, [...watchedHistorySet]);
+
+      if (watchedMap[id]) {
+        delete watchedMap[id];
+        saveJSON(STORAGE_KEYS.WATCHED, watchedMap);
+      }
+
+      // If this show is still sitting inside a calendar door, uncheck its box too
+      const domCard = document.querySelector(`.mini-media-card[data-id="${id}"]`);
+      if (domCard) {
+        domCard.classList.remove("watched");
+        const cb = domCard.querySelector("input[type='checkbox']");
+        if (cb) cb.checked = false;
+      }
+
+      updateProgressBar();
+      renderWatchedModalList();
+    }
+
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         closeMusicModal();
+        closeWatchedModal();
         closeGrinchModal();
       }
     });
@@ -2668,11 +2937,10 @@
             }
 
             // 👇 RIGHT HERE: Save that today's door is open & swing it open after the key turns
-            openDoorsMap[nowKey] = true;
-            saveJSON(STORAGE_KEYS.OPEN_DOORS, openDoorsMap);
-            setTimeout(() => {
-              todayCard.classList.add("is-open");
-            }, 1650);
+            todayCard._unlockTimer = setTimeout(() => {
+              todayCard.classList.remove("unlocking-now");
+              todayCard.querySelector(".lock-stage")?.remove();
+            }, 2200);
           }
         }
       }, 30000);
@@ -2711,9 +2979,16 @@
 
     function updateProgressBar() {
       const cards = [...document.querySelectorAll(".mini-media-card")];
-      const total = cards.length;
       const watchedCards = cards.filter(c => c.querySelector("input[type='checkbox']").checked);
-      const watched = watchedCards.length;
+
+      // Add +1 to BOTH watched and total for every show skipped with "Seen it" this season
+      const domIds = new Set(cards.map(c => c.dataset.id));
+      const seenItItems = [...seasonSeenSet]
+        .filter(id => !domIds.has(id) && CATALOG_BY_ID[id])
+        .map(id => CATALOG_BY_ID[id]);
+
+      const total = cards.length + seenItItems.length;
+      const watched = watchedCards.length + seenItItems.length;
 
       let milestone = "Time to start the marathon! 🎄";
       if (watched >= 1)  milestone = "You're on the nice list! 🎁";
@@ -2732,6 +3007,9 @@
         const p = c.dataset.platform;
         if (counts[p] !== undefined) counts[p] += 1;
       });
+      seenItItems.forEach(item => {
+        if (counts[item.platform] !== undefined) counts[item.platform] += 1;
+      });
 
       const pct = (n) => total > 0 ? `${(n / total) * 100}%` : "0%";
       document.getElementById("fill-netflix").style.width = pct(counts["Netflix"]);
@@ -2740,6 +3018,8 @@
       document.getElementById("fill-tf1").style.width     = pct(counts["TF1+"]);
       document.getElementById("fill-m6").style.width      = pct(counts["M6+"]);
       document.getElementById("fill-local").style.width   = pct(counts["Local"]);
+
+      updateAlreadyWatchedCount();
     }
 
     /* ========================================================================
